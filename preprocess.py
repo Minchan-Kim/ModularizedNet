@@ -65,7 +65,7 @@ def get_max_min():
     data_max = pd.read_csv('/home/dyros/mc_ws/ModularizedNet/training/max.csv', header = None).to_numpy()
     for i in range((data_max.shape)[0]):
         max_data.append(data_max[i])
-    data_min = pd.read_csv('/home/dyros/mc_ws/ModularizedNet/training/max.csv', header = None).to_numpy()
+    data_min = pd.read_csv('/home/dyros/mc_ws/ModularizedNet/training/min.csv', header = None).to_numpy()
     for i in range((data_min.shape)[0]):
         min_data.append(data_min[i])
 
