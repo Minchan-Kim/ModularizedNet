@@ -50,11 +50,3 @@ def Dataset(path, num_data, buffer_size, batch_size, pattern = '*.tfrecord', cyc
     dataset = dataset.prefetch(1)
 
     return dataset
-    
-    
-if __name__ == "__main__":
-    dataset = Dataset("/home/dyros/mc_ws/data", 65, 20000, 1000, num_parallel_calls = 1, drop_remainder = False)
-    cnt = 0
-    for x, y in dataset:
-        cnt += (x.shape[0])
-    print(cnt)  
