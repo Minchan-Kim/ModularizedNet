@@ -68,3 +68,5 @@ class MetricsLog(tf.keras.callbacks.Callback):
 callbacks = []
 
 model.fit(x = dataset, epochs = epochs, callbacks = callbacks, validation_data = validation_dataset)
+
+tf.saved_model.save(model, '/home/dyros/mc_ws/ModularizedNet/model/test')
