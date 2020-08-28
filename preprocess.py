@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import pandas as pd
 from collections import deque
 from pathlib import Path
 import argparse
@@ -53,24 +54,28 @@ def max_min(paths):
                 else:
                     if data[i, j] < max(min_values[j]):
                         min_values[j].append(data[i, j])
+        print(str(path))
 
     for i in range(107):
         max_data.append(min(max_values[i]))
         min_data.append(max(min_values[i]))
 
-    np.savetxt('max.csv', np.array(max_data), delimiter = ',')
-    np.savetxt('min.csv', np.array(min_data), delimiter = ',')
+    np.savetxt('/home/dyros/mc_ws/ModularizedNet/data/training/max.txt', np.array(max_data), delimiter = ',')
+    np.savetxt('/home/dyros/mc_ws/ModularizedNet/data/training/min.txt', np.array(min_data), delimiter = ',')
 
 def get_max_min():
-    data_max = pd.read_csv('/home/dyros/mc_ws/ModularizedNet/training/max.csv', header = None).to_numpy()
+    data_max = np.squeeze(pd.read_csv('/home/dyros/mc_ws/ModularizedNet/data/training/max.txt', header = None).to_numpy())
     for i in range((data_max.shape)[0]):
         max_data.append(data_max[i])
-    data_min = pd.read_csv('/home/dyros/mc_ws/ModularizedNet/training/min.csv', header = None).to_numpy()
+    data_min = np.squeeze(pd.read_csv('/home/dyros/mc_ws/ModularizedNet/data/training/min.txt', header = None).to_numpy())
     for i in range((data_min.shape)[0]):
         min_data.append(data_min[i])
 
 def normalize_data(data, i, j):
-    return (2 * (data[i:j] - min_data[i:j]) / (max_data[i:j] - min_data[i:j]) - 1)
+    result = np.zeros(j - i)
+    for k in range(i, j):
+        result[k - i] = (2 * (data[k] - min_data[k]) / (max_data[k] - min_data[k]) - 1)
+    return result
 
 def Normalize(src, dest, timesteps, indices, frequency):
     logdata = pd.read_csv(src, header = None).to_numpy()
@@ -103,24 +108,24 @@ def write(data, src, dest, timesteps):
         window.append(data[i, :-2])
     for i in range((timesteps - 1), (data.shape)[0]):
         window.append(data[i, :-2])
-        temp = np.vstack(tuple(window))
+        temp = np.hstack(tuple(window))
         x = np.zeros_like(temp)
         m = 0
         for j in range(7):
-            for k in timesteps:
-                for l in range((data.shape)[1] / 7):
-                    x[m] = temp[(l * 7 + j) + ((data.shape)[1] * k)]
+            for k in range(timesteps):
+                for l in range(int(((data.shape)[1] - 2) / 7)):
+                    x[m] = temp[(l * 7 + j) + (((data.shape)[1] - 2) * k)]
                     m += 1    
         y = data[i, -2:]
         windows.append((x, y))
     np.random.shuffle(windows)
-    src = str(src)
+    src = str(src.name)
     file_index = int(src[3:-4])
     filename = dest + '/training{}'.format(file_index)
     writer = tf.io.TFRecordWriter(filename  + '.tfrecord')
     for x, y in windows:
         feature = {
-            'x': tf.train.Feature(bytes_list = tf.train.FloatList(value = x)),
+            'x': tf.train.Feature(float_list = tf.train.FloatList(value = x)),
             'y': tf.train.Feature(float_list = tf.train.FloatList(value = y))
         }
         example_proto = tf.train.Example(features = tf.train.Features(feature = feature))
@@ -135,17 +140,19 @@ if __name__ == "__main__":
     parser.add_argument('dest_path',nargs = '?', default = '/home/dyros/mc_ws/ModularizedNet/data/training')
     parser.add_argument('--dataset', type = str, default = 'training')
     parser.add_argument('--variables', nargs = '+')
+    parser.add_argument('--timesteps', type = int, default = 5)
     args = parser.parse_args()
     src_path = args.src_path
     dest_path = args.dest_path
     dataset = args.dataset
     variables = args.variables
+    timesteps = args.timesteps
     variables = [variable.lower() for variable in variables]
     variables = [variable.replace('_', '') for variable in variables]
 
     tf.get_logger().setLevel('WARN')
 
-    paths = list(Path(src_path).glob('*.txt'))
+    paths = list(Path(src_path).glob('*.csv'))
     indices = []
     for key in variables_dict.keys():
         for variable in variables:
@@ -156,9 +163,10 @@ if __name__ == "__main__":
 
     if dataset == 'training':
         max_min(paths)
+        print('Maximum and minimum values are found.')
     else:
         get_max_min()
     
     for path in paths:
-        Normalize(path, dest, timesteps, indices, 100)
+        Normalize(path, dest_path, timesteps, indices, 100)
         print(str(path))
